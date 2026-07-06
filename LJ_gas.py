@@ -30,6 +30,10 @@ class ParticleSystem:
         self.mass = np.zeros(n_particles)
         self.sigma = np.zeros(n_particles)
         self.epsilon = np.zeros(n_particles)
+
+        # Atom type / element label for each particle (used e.g. for
+        # writing multi-species trajectories). Defaults to "X" (unknown).
+        self.atom_type = np.array(["X"] * n_particles, dtype=object)
         
         # 3D positions, velocities, forces, and random numbers (shape: n_particles x 3)
         self.position = np.zeros((n_particles, 3))
@@ -41,15 +45,25 @@ class ParticleSystem:
     # With these functions the parameters and states of individual atoms can be changed.
     # In vectorized programming, they will not be used very often
     #
-    def set_parameters(self, i, mass, sigma, epsilon):
+    def set_parameters(self, i, mass, sigma, epsilon, atom_type=None):
         """Set the paramters of the i-th particle
             mass in units of u 
             sigma in units of nm 
             epsilon in units of kJ/mol 
+            atom_type: optional element/species label (e.g. "Ar", "Kr"),
+                       used for identifying atom types in mixtures and for
+                       trajectory output. If None, the label is left
+                       unchanged (default "X").
         """
         self.mass[i] = mass
         self.sigma[i] = sigma
         self.epsilon[i] = epsilon
+        if atom_type is not None:
+            self.atom_type[i] = atom_type
+
+    def set_type(self, i, atom_type):
+        """Set the atom type / element label of the i-th particle."""
+        self.atom_type[i] = atom_type
 
     def set_position(self, i, position):
         """Set the paramters of the i-th particle"""
@@ -103,6 +117,37 @@ class SimulationParameters:
 #----------------------------------------------------------------
 
 #--------------------------------------
+# Combining rules for mixtures
+#--------------------------------------
+def combine_lj_parameters(ps: ParticleSystem):
+    """
+    Computes the pairwise Lennard-Jones parameters (sigma_ij, epsilon_ij)
+    for all particle pairs using the Lorentz-Berthelot combining rules:
+
+        sigma_ij   = (sigma_i + sigma_j) / 2          (arithmetic mean)
+        epsilon_ij = sqrt(epsilon_i * epsilon_j)      (geometric mean)
+
+    See: https://en.wikipedia.org/wiki/Combining_rules
+
+    For a single-species system, this simply reduces to the pure sigma
+    and epsilon of that species (sigma_ii = sigma_i, epsilon_ii = epsilon_i),
+    so this function can safely be used for both pure systems and mixtures.
+
+    Parameters:
+        ps (ParticleSystem): Particle system containing per-particle
+                              sigma and epsilon arrays (shape (N,)).
+
+    Returns:
+        sigma_ij   (np.ndarray): shape (N, N), pairwise combined sigma
+        epsilon_ij (np.ndarray): shape (N, N), pairwise combined epsilon
+    """
+    sigma_ij = 0.5 * (ps.sigma[:, np.newaxis] + ps.sigma[np.newaxis, :])
+    epsilon_ij = np.sqrt(ps.epsilon[:, np.newaxis] * ps.epsilon[np.newaxis, :])
+
+    return sigma_ij, epsilon_ij
+
+
+#--------------------------------------
 # Initialization
 #--------------------------------------
 def initialize_positions(ps: ParticleSystem, box_length_in_nm: float):
@@ -146,18 +191,22 @@ def initialize_velocities(ps: ParticleSystem, temperature: float):
 def potential_energy(ps: ParticleSystem, sim: SimulationParameters) -> float:
     """
     Computes the total Lennard-Jones potential energy of the system.
-    
-    Assumes uniform Lennard-Jones parameters:
-        epsilon and sigma (taken from particle 0)
-    
+
+    Supports mixtures of different particle types: pairwise sigma and
+    epsilon are computed for every pair (i, j) using the Lorentz-Berthelot
+    combining rules (see combine_lj_parameters). For a single-species
+    system this is equivalent to using one fixed sigma/epsilon for all
+    pairs.
+
     Units:
         Energy is in the same units as epsilon (kJ/mol).
         Positions must be in the same units as sigma (nm).
     """
     n_particles = ps.n
-    sigma = ps.sigma[0]
-    epsilon = ps.epsilon[0]
     L = sim.box_length
+
+    # pairwise combined LJ parameters (Lorentz-Berthelot combining rules)
+    sigma_ij_matrix, epsilon_ij_matrix = combine_lj_parameters(ps)
         
     # vectorized code to calculate the pairwise distances
     # positions[:, np.newaxis, :] has shape (N, 1, 3)
@@ -176,6 +225,10 @@ def potential_energy(ps: ParticleSystem, sim: SimulationParameters) -> float:
     
     # Get list of unique distance vectors and unique distances
     r = r_matrix[i_upper]                           # shape (N_pairs,)
+
+    # Get the combined sigma/epsilon for each unique pair
+    sigma = sigma_ij_matrix[i_upper]                # shape (N_pairs,)
+    epsilon = epsilon_ij_matrix[i_upper]            # shape (N_pairs,)
 
     # reset the very small distance to 0.00001 nm to make sure
     # that the sr6**2 term is numerically stable
@@ -276,17 +329,22 @@ def calculate_force(ps: ParticleSystem, sim: SimulationParameters):
     """
     Computes and assigns Lennard-Jones forces between all unique particle pairs.
 
+    Supports mixtures of different particle types: pairwise sigma and
+    epsilon are computed for every pair (i, j) using the Lorentz-Berthelot
+    combining rules (see combine_lj_parameters). For a single-species
+    system this is equivalent to using one fixed sigma/epsilon for all
+    pairs.
+
     Assumes:
-        - Pairwise interactions use identical sigma and epsilon values.
         - Positions are in units compatible with sigma (e.g. nm).
         - Returns no value; updates ps.force in-place (shape: (N, 3)).
     """
     
     n_particles = ps.n
-    sigma = ps.sigma[0]
-    epsilon = ps.epsilon[0]
     L = sim.box_length
 
+    # pairwise combined LJ parameters (Lorentz-Berthelot combining rules)
+    sigma_ij_matrix, epsilon_ij_matrix = combine_lj_parameters(ps)
 
     # vectorized code to calculate the pairwise distances
     # positions[:, np.newaxis, :] has shape (N, 1, 3)
@@ -306,6 +364,10 @@ def calculate_force(ps: ParticleSystem, sim: SimulationParameters):
     # Get list of unique distance vectors and unique distances
     rij = rij_matrix[i_upper]                       # shape (N_pairs, 3)    
     r = r_matrix[i_upper]                           # shape (N_pairs,)
+
+    # Get the combined sigma/epsilon for each unique pair
+    sigma = sigma_ij_matrix[i_upper]                # shape (N_pairs,)
+    epsilon = epsilon_ij_matrix[i_upper]            # shape (N_pairs,)
     
     # reset distances < rij_min  to rij_min to make sure
     # that the sr6**2 term is numerically stable
@@ -514,11 +576,21 @@ def write_xyz_trajectory(filename, trajectory, atom_symbol="Ar"):
     """
     Writes a trajectory to an .xyz file.
 
+    Supports both single-species systems and mixtures: pass either a
+    single label (used for all atoms, for backwards compatibility) or
+    a per-particle array/list of labels (e.g. ps.atom_type) so that
+    different atom types are correctly labeled in the output.
+
     Parameters:
         filename (str): Name of the output .xyz file.
         trajectory (np.ndarray): Array of shape (n_frames, n_particles, 3)
                                  containing atomic positions.
-        atom_symbol (str): Element symbol to use for all atoms (default: "Ar").
+        atom_symbol (str or array-like of str):
+            - If a single string, this label is used for all atoms
+              (default: "Ar").
+            - If an array-like of length n_particles (e.g. ps.atom_type),
+              each particle is written with its own label, which is
+              required for mixtures of different atom types.
 
     Returns:
         None. Writes file to disk.
@@ -527,10 +599,22 @@ def write_xyz_trajectory(filename, trajectory, atom_symbol="Ar"):
     trajectory = 10.0 * trajectory  # convert nm to Å
     n_frames, n_atoms, _ = trajectory.shape
 
+    # build a per-particle list of labels, whether a single symbol
+    # or a per-particle array of symbols was passed in
+    if isinstance(atom_symbol, str):
+        labels = [atom_symbol] * n_atoms
+    else:
+        labels = list(atom_symbol)
+        if len(labels) != n_atoms:
+            raise ValueError(
+                f"Length of atom_symbol ({len(labels)}) does not match "
+                f"number of particles in trajectory ({n_atoms})."
+            )
+
     with open(filename, "w") as f:
         for frame in trajectory:
             f.write(f"{n_atoms}\n")
             f.write("Generated by write_xyz_trajectory\n")
-            for pos in frame:
-                f.write(f"{atom_symbol} {pos[0]:.8f} {pos[1]:.8f} {pos[2]:.8f}\n")
+            for label, pos in zip(labels, frame):
+                f.write(f"{label} {pos[0]:.8f} {pos[1]:.8f} {pos[2]:.8f}\n")
  
