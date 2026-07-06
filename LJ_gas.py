@@ -70,6 +70,54 @@ class ParticleSystem:
     def __repr__(self):
         return f"<ParticleSystem with {self.n} particles>"
 
+class ParticleSystem2:
+    def __init__(self, n_particles):
+        self.n = n_particles
+        
+        # Properties for each particle
+        self.mass = np.zeros(n_particles)
+        self.sigma = np.zeros(n_particles)
+        self.epsilon = np.zeros(n_particles)
+        
+        # 3D positions, velocities, forces, and random numbers (shape: n_particles x 3)
+        self.position = np.zeros((n_particles, 3))
+        self.velocity = np.zeros((n_particles, 3))
+        self.force = np.zeros((n_particles, 3))
+        self.random_number = np.zeros((n_particles, 3))
+    
+    #---------------------
+    # With these functions the parameters and states of individual atoms can be changed.
+    # In vectorized programming, they will not be used very often
+    #
+    def set_parameters(self, i, mass, sigma, epsilon):
+        """Set the paramters of the i-th particle
+            mass in units of u 
+            sigma in units of nm 
+            epsilon in units of kJ/mol 
+        """
+        self.mass[i] = mass
+        self.sigma[i] = sigma
+        self.epsilon[i] = epsilon
+
+    def set_position(self, i, position):
+        """Set the paramters of the i-th particle"""
+        self.position[i] = position
+        
+    def set_velocity(self, i, velocity):
+        """Set the paramters of the i-th particle"""    
+        self.velocity[i] = velocity            
+
+    def set_force(self, i, force):
+        """Set the paramters of the i-th particle"""    
+        self.force[i] = force            
+
+    def set_random_number(self, i, random_number):
+        """Set the paramters of the i-th particle"""    
+        self.random_number[i] = random_number            
+
+    def __repr__(self):
+        return f"<ParticleSystem with {self.n} particles>"
+
 
 class SimulationParameters:
     def __init__(self, dt, n_steps, temperature, box_length, tau_thermostat = None, rij_min=0.0, ):
@@ -101,6 +149,18 @@ class SimulationParameters:
 #----------------------------------------------------------------
 #   F U N C T I O N S
 #----------------------------------------------------------------
+
+#--------------------------------------
+# Lorentz-Berthelot
+#--------------------------------------
+
+def lorentz(ps:ParticleSystem, ps2:ParticleSystem):
+    sigma_new = (ps.sigma + ps2.sigma) * 1/2
+    return sigma_new
+
+def berthelot(ps:ParticleSystem, ps2:ParticleSystem):
+    epsilon_new = np.sqrt(ps.epsilon * ps2.epsilon)
+    return epsilon_new
 
 #--------------------------------------
 # Initialization
@@ -189,6 +249,53 @@ def potential_energy(ps: ParticleSystem, sim: SimulationParameters) -> float:
     E_pot = np.sum(lj_pairwise)
     
     return E_pot
+
+# def potential_energy_combining_rules(sigma, epsilon, n_particles, sim: SimulationParameters) -> float:
+#     """
+#     Computes the total Lennard-Jones potential energy of the system.
+    
+#     Assumes uniform Lennard-Jones parameters:
+#         epsilon and sigma (taken from particle 0)
+    
+#     Units:
+#         Energy is in the same units as epsilon (kJ/mol).
+#         Positions must be in the same units as sigma (nm).
+#     """
+#     n_particles = ps.n
+#     sigma = ps.sigma[0]
+#     epsilon = ps.epsilon[0]
+#     L = sim.box_length
+        
+#     # vectorized code to calculate the pairwise distances
+#     # positions[:, np.newaxis, :] has shape (N, 1, 3)
+#     # positions[np.newaxis, :, :] has shape (1, N, 3)
+#     # The difference broadcasted has shape (N, N, 3)
+#     rij_matrix = ps.position[:, np.newaxis, :] - ps.position[np.newaxis, :, :]
+    
+#     # apply periodic boundary conditions
+#     rij_matrix -= L * np.rint(rij_matrix / L)
+    
+#     # Pairwise distances (shape: N, N)
+#     r_matrix = np.linalg.norm(rij_matrix, axis=-1)  
+
+#     # Extract upper triangle indices (i < j), i.e. the list of unique pairs
+#     i_upper = np.triu_indices(n_particles, k=1)
+    
+#     # Get list of unique distance vectors and unique distances
+#     r = r_matrix[i_upper]                           # shape (N_pairs,)
+
+#     # reset the very small distance to 0.00001 nm to make sure
+#     # that the sr6**2 term is numerically stable
+#     r = np.clip(r, sim.rij_min, None)
+    
+#     # Compute Lennard-Jones potential for each unique pair
+#     sr6 = (sigma / r)**6
+#     lj_pairwise = 4 * epsilon * (sr6**2 - sr6)
+
+#     # Total potential energy
+#     E_pot = np.sum(lj_pairwise)
+    
+#     return E_pot
 
 def kinetic_energy(ps: ParticleSystem) -> float:
     """
