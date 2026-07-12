@@ -21,7 +21,8 @@ the simulation workflow.
 import numpy as np
 from scipy.constants import R
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
+from IPython.display import display
 
 from pathlib import Path
 
@@ -76,14 +77,14 @@ n_particles_A = 100
 mass_A =  39.95             # mass in u = 1e-3 kg/mol
 sigma_A = 0.34              # sigma in nm     Argon: 0.34
 epsilon_A = 120*R*1e-3      # epsilon in kJ/mol Argon: 120
-type_A = 'Ar'
+type_A = "Ar"
 
 # second particle type
 n_particles_B = 100
 mass_B = 4.00               # mass in u = 1e-3 kg/mol
 sigma_B = 0.25              # sigma in nm     Helium: 0.25
 epsilon_B = 10.2*R*1e-3      # epsilon in kJ/mol Helium: 10.2
-type_B = 'He'
+type_B = "He" 
 
 
 n_particles = n_particles_A + n_particles_B
@@ -102,10 +103,10 @@ NVT = True          # switch to decide between NVT and NVE
 #----------------------------------------------------------------
 
 # output
-file_name_base = "particle_test"  # file name for all output files
+file_name_base = "animation_test2"  # file name for all output files
 
 # Create a folder inside your repository
-output_dir = Path(file_name_base)
+output_dir = Path("results") / file_name_base
 output_dir.mkdir(parents=True, exist_ok=True)
 
 #save tracjetory files
@@ -119,7 +120,7 @@ plot_kinetic_enery = False
 plot_temperature = False
 plot_pressure = False
 
-particle_animation = False
+particle_animation = True
 
 
 #----------------------------------------------------------------
@@ -287,28 +288,101 @@ if plot_pressure==True:
 
 
 #----------------------------------------------------
-# P A R T I C L E   A N I MA T I O N
+# P A R T I C L E   A N I M A T I O N
 #----------------------------------------------------
-    
-    fig = plt.figure()
+
+color_map = {
+    "He": "tab:cyan",
+    "Ne": "tab:pink",
+    "Ar": "tab:orange",
+    "Kr": "tab:green",
+    "Xe": "tab:purple"
+}
+
+size_map = {
+    "He": 35,
+    "Ne": 45,
+    "Ar": 70,
+    "Kr": 85,
+    "Xe": 100}
+
+
+if particle_animation==True:
+
+    # Create figure
+    fig = plt.figure(figsize=(7,7))
     ax = fig.add_subplot(111, projection="3d")
 
+    # Extract coordinates for axis limits
+    x = position_trajectory[:, :, 0]
+    y = position_trajectory[:, :, 1]
+    z = position_trajectory[:, :, 2]
 
-    initial_positions = position_trajectory[0,:,:]
+    ax.set_xlim(0, x.max())
+    ax.set_ylim(0, y.max())
+    ax.set_zlim(0, z.max())
 
-    x = initial_positions[:,0]
-    y = initial_positions[:,1]
-    z = initial_positions[:,2]
+    ax.set_xlabel("x [nm]")
+    ax.set_ylabel("y [nm]")
+    ax.set_zlabel("z [nm]")
+
+    # Create one scatter object per particle type
+    unique_types = np.unique(ps.type)
+
+    scatters = {}
+  
+    for i in unique_types:
+        mask = ps.type == i
+        color = color_map.get(i)
+        size = size_map.get(i)
+        scatters[i] = ax.scatter([],[],[],s=size,label=i, c=color)
 
 
-    ax.scatter(x, y, z)
+    ax.legend(loc = "lower left", title="Particle types")
+    
 
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
+    # Initialize first frame
+    def init():
 
-    plt.savefig(output_dir / (file_name_base + "_particle.png"), dpi=300, bbox_inches='tight')
+        positions = position_trajectory[0]
+        for particle_type, scatter in scatters.items():
+            mask = ps.type == particle_type
+            scatter._offsets3d = (
+                positions[mask, 0],
+                positions[mask, 1],
+                positions[mask, 2],)
+
+        return list(scatters.values())
+
+    # Update function
+    def update(frame):
+
+        positions = position_trajectory[frame]
+
+        for particle_type, scatter in scatters.items():
+            mask = ps.type == particle_type
+
+            scatter._offsets3d = (
+                positions[mask, 0],
+                positions[mask, 1],
+                positions[mask, 2])
+
+        ax.set_title(f"Simulation of a particle mixture at time = {frame*dt:.1f} ps.")
+        return list(scatters.values())
+
+
+    #Create animation
+    animation = FuncAnimation(fig,update,frames=range(position_trajectory.shape[0]),init_func=init,interval=30,blit=False)
+    
+    # Save animation
+    #writer = FFMpegWriter(fps=30,bitrate=3000)
+    writer = PillowWriter(fps=60)
+
+    animation.save(output_dir / (file_name_base + "_trajectory.gif"),
+        writer=writer)
+    
     plt.show()
+    plt.close()
 
 #--------------------------------------
 # O U T P U T 
@@ -358,3 +432,13 @@ for line in output_lines:
 with open(output_dir / (file_name_base + ".out"), "w") as f:
     for line in output_lines:
         f.write(line + "\n")    
+
+#Shape control
+
+print("------------------------------SHAPE CONTROL AND SUCH---------------------------")
+print(" ")
+print("position trajectory shape:", position_trajectory.shape)
+print("type shape:", ps.type.shape)
+print("positions zero:", position_trajectory[0][:5])
+print("unique types:",np.unique(ps.type))
+# print("mask:", mask)

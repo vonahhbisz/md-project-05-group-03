@@ -27,7 +27,7 @@ class ParticleSystem:
         self.n = n_particles
         
         # defines the type of each particle by assigning it a lable 
-        self.type = np.array(["X"] * n_particles)
+        self.type = np.array(["Xx"] * n_particles)
 
         # Properties for each particle
         self.mass = np.zeros(n_particles)
