@@ -1,0 +1,32 @@
+
+----------------------------------------------------------
+Simulation parameters 
+----------------------------------------------------------
+Number of particles:                 200 
+  of which Ar:                       100 
+  of which Kr:                       100 
+Box length:                    1.000e+02 nm
+Box volume:                    1.000e+06 nm^3
+Density:                       2.055e-05 g/cm^3
+
+Pure-species LJ parameters:
+  Ar sigma / epsilon:              0.340 nm /      0.998 kJ/mol
+  Kr sigma / epsilon:              0.364 nm /      1.364 kJ/mol
+  Ar-Kr sigma / epsilon:           0.352 nm /      1.166 kJ/mol  (Lorentz-Berthelot)
+
+Time step:                         0.100 ps
+Number of time steps:               1000
+Simulation time:               1.000e+02 ps
+
+Ensemble:                            NVT
+Thermostat temperature:              300 K
+Thermostat coupling:           1.000e+00 ps
+
+Lower cutoff radius:               0.010 nm
+----------------------------------------------------------
+Elapsed time:                    225.671 s
+Elapsed time per time step:        0.226 s
+Time stamp:                   2026-07-06 14:55:06 s
+----------------------------------------------------------
+END
+----------------------------------------------------------

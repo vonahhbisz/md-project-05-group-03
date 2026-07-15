@@ -8,8 +8,7 @@ Lennard-Jones mixture (two different atom types, e.g. Argon and Krypton).
 
 Unlike-pair LJ parameters (sigma_ij, epsilon_ij) are generated automatically
 from the pure-species parameters using the Lorentz-Berthelot combining
-rules (see LJ_gas.combine_lj_parameters and
-https://en.wikipedia.org/wiki/Combining_rules):
+rules:
 
     sigma_ij   = (sigma_i + sigma_j) / 2
     epsilon_ij = sqrt(epsilon_i * epsilon_j)
@@ -35,7 +34,7 @@ import matplotlib.pyplot as plt
 import time
 from datetime import datetime
 
-from LJ_gas import(
+from LJ_gas_06072026_KT import(
     ParticleSystem,
     SimulationParameters,
     simulate_NVE_step,
@@ -81,16 +80,16 @@ def toc():
 # pure-species LJ parameters -- unlike-pair (A-B) parameters are derived
 # automatically via the Lorentz-Berthelot combining rules in LJ_gas.py
 n_particles_A = 100
-mass_A    = 39.95              # mass in u = 1e-3 kg/mol      Argon
-sigma_A   = 0.34                # sigma in nm                  Argon: 0.34
-epsilon_A = 120 * R * 1e-3      # epsilon in kJ/mol             Argon: 120
-label_A   = "Ar"
+mass_A    = 4.0              # mass in u = 1e-3 kg/mol      Argon: 39.95  Helium: 0.004
+sigma_A   = 0.25238                # sigma in nm                  Argon: 0.34 Helium 0.25238 
+epsilon_A = 82 * R * 1e-3      # epsilon in kJ/mol             Argon: 120 Helium 0.082
+label_A   = "He"
 
 n_particles_B = 100
-mass_B    = 83.80               # mass in u = 1e-3 kg/mol      Krypton
-sigma_B   = 0.364               # sigma in nm                  Krypton: 0.364
-epsilon_B = 164 * R * 1e-3      # epsilon in kJ/mol             Krypton: 164
-label_B   = "Kr"
+mass_B    = 131.29               # mass in u = 1e-3 kg/mol      Krypton: 83.80   Xenon: 0.13129
+sigma_B   = 0.406               # sigma in nm                  Krypton: 0.364 Xenon: 0.4063
+epsilon_B = 190 * R * 1e-3      # epsilon in kJ/mol             Krypton: 164 Xenon: 0.19
+label_B   = "Xe"
 
 n_particles = n_particles_A + n_particles_B
 
@@ -104,7 +103,7 @@ rij_min = 1e-2      # nm
 NVT = True          # switch to decide between NVT and NVE
 
 # output
-file_name_base = "my_mixture_simulation"  # file name for all output files
+file_name_base = "He_Xe_sim_1407"  # file name for all output files
 
 #----------------------------------------------------------------
 #   P R O G R A M

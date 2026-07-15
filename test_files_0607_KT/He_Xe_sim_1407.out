@@ -1,0 +1,32 @@
+
+----------------------------------------------------------
+Simulation parameters 
+----------------------------------------------------------
+Number of particles:                 200 
+  of which He:                       100 
+  of which Xe:                       100 
+Box length:                    1.000e+02 nm
+Box volume:                    1.000e+06 nm^3
+Density:                       2.247e-05 g/cm^3
+
+Pure-species LJ parameters:
+  He sigma / epsilon:              0.252 nm /      0.682 kJ/mol
+  Xe sigma / epsilon:              0.406 nm /      1.580 kJ/mol
+  He-Xe sigma / epsilon:           0.329 nm /      1.038 kJ/mol  (Lorentz-Berthelot)
+
+Time step:                         0.100 ps
+Number of time steps:               1000
+Simulation time:               1.000e+02 ps
+
+Ensemble:                            NVT
+Thermostat temperature:              300 K
+Thermostat coupling:           1.000e+00 ps
+
+Lower cutoff radius:               0.010 nm
+----------------------------------------------------------
+Elapsed time:                    466.369 s
+Elapsed time per time step:        0.466 s
+Time stamp:                   2026-07-15 14:02:30 s
+----------------------------------------------------------
+END
+----------------------------------------------------------
