@@ -27,6 +27,7 @@ class ParticleSystem:
         self.n = n_particles
         
         # defines the type of each particle by assigning it a lable 
+        """lass noch mal darüber reden"""
         self.type = np.array(["Xx"] * n_particles)
 
         # Properties for each particle
@@ -113,13 +114,24 @@ class SimulationParameters:
 
 def combining_rules(ps: ParticleSystem):
     """
-    Creates a matrix containing the sigma and epsilon parameters for all possible combinations of atomtypes /parewise interactions following the Lorentz-Berthelot combining rules.
+    Creates a matrix containing the sigma and epsilon parameters for all possible combinations of atomtypes /pairwise interactions following the Lorentz-Berthelot combining rules.
     
     shape: (Combinations of atoms, 2) 
     """
+
+        #for i in range(n_particles):
+    #for j in range(i + 1, n_particles):
+
+        #sigma_ij = 0.5 * (ps.sigma[i] + ps.sigma[j])
+        #epsilon_ij = np.sqrt(ps.epsilon[i] * ps.epsilon[j])
+
+        # now use sigma_ij and epsilon_ij
+        #calculate_force(i, j, sigma_ij, epsilon_ij)
+        # better alternative:
+    # matrix includes interactions of particles with themselves, however these are excluded in the force calculation loop
     sigma_ij = 0.5 * (ps.sigma[:, np.newaxis] + ps.sigma[np.newaxis, :])
     epsilon_ij = np.sqrt(ps.epsilon[:, np.newaxis] * ps.epsilon[np.newaxis, :])
-
+# returns arrays with pairwise combined sigma (N,N) and epsilon (N,N) matrix
     return sigma_ij, epsilon_ij
 
 
@@ -304,7 +316,6 @@ def calculate_force(ps: ParticleSystem, sim: SimulationParameters):
     Computes and assigns Lennard-Jones forces between all unique particle pairs.
 
     Assumes:
-        - Pairwise interactions use identical sigma and epsilon values.
         - Positions are in units compatible with sigma (e.g. nm).
         - Returns no value; updates ps.force in-place (shape: (N, 3)).
     """

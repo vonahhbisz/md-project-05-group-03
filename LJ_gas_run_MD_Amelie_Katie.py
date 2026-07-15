@@ -74,17 +74,17 @@ def toc():
 # system
 # first particle type
 n_particles_A = 100
-mass_A =  39.95             # mass in u = 1e-3 kg/mol
-sigma_A = 0.34              # sigma in nm     Argon: 0.34
-epsilon_A = 120*R*1e-3      # epsilon in kJ/mol Argon: 120
-type_A = "Ar"
+mass_A    = 4.0              # mass in u = 1e-3 kg/mol      Argon: 39.95  Helium: 0.004
+sigma_A   = 0.25238                # sigma in nm                  Argon: 0.34 Helium 0.25238 
+epsilon_A = 82 * R * 1e-3      # epsilon in kJ/mol             Argon: 120 Helium 0.082
+label_A   = "He"
 
 # second particle type
 n_particles_B = 100
-mass_B = 4.00               # mass in u = 1e-3 kg/mol
-sigma_B = 0.25              # sigma in nm     Helium: 0.25
-epsilon_B = 10.2*R*1e-3      # epsilon in kJ/mol Helium: 10.2
-type_B = "He" 
+mass_B    = 131.29               # mass in u = 1e-3 kg/mol      Krypton: 83.80   Xenon: 0.13129
+sigma_B   = 0.406               # sigma in nm                  Krypton: 0.364 Xenon: 0.4063
+epsilon_B = 190 * R * 1e-3      # epsilon in kJ/mol             Krypton: 164 Xenon: 0.19
+label_B   = "Xe"
 
 
 n_particles = n_particles_A + n_particles_B
