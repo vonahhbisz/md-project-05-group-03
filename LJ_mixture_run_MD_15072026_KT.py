@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import time
 from datetime import datetime
 
-from LJ_gas_06072026_KT import(
+from LJ_gas_15072026_KT import(
     ParticleSystem,
     SimulationParameters,
     simulate_NVE_step,

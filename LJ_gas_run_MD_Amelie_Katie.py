@@ -29,7 +29,7 @@ from pathlib import Path
 import time
 from datetime import datetime
 
-from LJ_gas_Amelie_Kathie import(
+from LJ_gas_Amelie_Katie import(
     ParticleSystem,
     SimulationParameters,
     simulate_NVE_step,
