@@ -34,7 +34,7 @@ class ParticleSystem:
         self.mass = np.zeros(n_particles)
         self.sigma = np.zeros(n_particles)
         self.epsilon = np.zeros(n_particles)
-
+        self.positionbox = np.zeros((2, n_particles, 3)) #shape=(2,N,3)
         
         # 3D positions, velocities, forces, and random numbers (shape: n_particles x 3)
         self.position = np.zeros((n_particles, 3))
@@ -56,6 +56,10 @@ class ParticleSystem:
         self.sigma[i] = sigma
         self.epsilon[i] = epsilon
         self.type[i] = type
+    
+    def set_positionbox(self, i, positionbox):
+        """Set positionbix of the i-th particle"""
+        self.positionbox[:,i,:] = positionbox
 
     def set_position(self, i, position):
         """Set the paramters of the i-th particle"""
@@ -139,9 +143,12 @@ def combining_rules(ps: ParticleSystem):
 #--------------------------------------
 # Initialization
 #--------------------------------------
-def initialize_positions(ps: ParticleSystem, box_length_in_nm: float):
-    """Initialize particle positions uniformly in a cubic box."""
-    ps.position[:] = np.random.uniform(0, box_length_in_nm, size=(ps.n, 3))
+def initialize_positions(ps: ParticleSystem):
+    """Initialize particle positions in a predefined rectangular box box."""
+    ps.position[:,0] = np.random.uniform(ps.positionbox[0,:,0], ps.positionbox[1,:,0])
+    ps.position[:,1] = np.random.uniform(ps.positionbox[0,:,1], ps.positionbox[1,:,1])
+    ps.position[:,2] = np.random.uniform(ps.positionbox[0,:,2], ps.positionbox[1,:,2])
+
 
 def initialize_velocities(ps: ParticleSystem, temperature: float):
     """

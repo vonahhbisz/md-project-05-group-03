@@ -22,6 +22,7 @@ import numpy as np
 from scipy.constants import R
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter, FFMpegWriter
+from matplotlib.ticker import MultipleLocator
 from IPython.display import display
 
 from pathlib import Path
@@ -74,26 +75,31 @@ def toc():
 # system
 # first particle type
 n_particles_A = 100
-mass_A    = 4.0              # mass in u = 1e-3 kg/mol      Argon: 39.95  Helium: 0.004
-sigma_A   = 0.25238                # sigma in nm                  Argon: 0.34 Helium 0.25238 
-epsilon_A = 82 * R * 1e-3      # epsilon in kJ/mol             Argon: 120 Helium 0.082
+mass_A    = 4.0              # mass in u = 1e-3 kg/mol      Argon: 39.95    Helium: 4.0
+sigma_A   = 0.25238          # sigma in nm                  Argon: 0.34     Helium 0.25238 
+epsilon_A = 82 * R * 1e-3    # epsilon in kJ/mol            Argon: 120      Helium 82
 label_A   = "He"
+                        # start...  # end of line 
+positionbox_A = np.array([[0,0,0],[50,50,12.5]]) 
+# defines the area of starting positions as a box with x,y,z [nm]
 
 # second particle type
 n_particles_B = 100
-mass_B    = 131.29               # mass in u = 1e-3 kg/mol      Krypton: 83.80   Xenon: 0.13129
-sigma_B   = 0.406               # sigma in nm                  Krypton: 0.364 Xenon: 0.4063
-epsilon_B = 190 * R * 1e-3      # epsilon in kJ/mol             Krypton: 164 Xenon: 0.19
-label_B   = "Xe"
-
+mass_B    = 20.1797             # mass in u = 1e-3 kg/mol   Krypton: 83.80     Xenon: 131.29  Neon: 20.1797
+sigma_B   = 0.2789              # sigma in nm               Krypton: 0.364     Xenon: 0.4063  Neon: 0.2789
+epsilon_B = 35.6 * R * 1e-3     # epsilon in kJ/mol         Krypton: 164       Xenon: 190     Neon: 35.6 
+label_B   = "Ne"
+                        # start...  # end of line 
+positionbox_B = np.array([[0,0,12.5],[50,50,50]])
+# defines the area of starting positions as a box with x,y,z [nm]
 
 n_particles = n_particles_A + n_particles_B
 
 # simulation
 dt = 0.1             # ps
 n_steps = 1000 
-temperature = 300     # K
-box_length = 100      # nm
+temperature = 1000     # K
+box_length = 50     # nm
 tau_thermostat = 1  # thermostat coupling constant in 1/ps
 rij_min = 1e-2      # nm
 NVT = True          # switch to decide between NVT and NVE
@@ -103,7 +109,7 @@ NVT = True          # switch to decide between NVT and NVE
 #----------------------------------------------------------------
 
 # output
-file_name_base = "animation_test2"  # file name for all output files
+file_name_base = "Positions_Test17"  # file name for all output files
 
 # Create a folder inside your repository
 output_dir = Path("results") / file_name_base
@@ -147,13 +153,21 @@ ps = ParticleSystem(n_particles)
 
 # fill in the parameters for argon
 for i in range(n_particles_A): 
-    ps.set_parameters(i, mass=mass_A, sigma=sigma_A, epsilon=epsilon_A, type=type_A)
+    ps.set_parameters(i, mass=mass_A, sigma=sigma_A, epsilon=epsilon_A, type=label_A)
 
 for i in range(n_particles_A,n_particles): 
-    ps.set_parameters(i, mass=mass_B, sigma=sigma_B, epsilon=epsilon_B, type=type_B)
+    ps.set_parameters(i, mass=mass_B, sigma=sigma_B, epsilon=epsilon_B, type=label_B)
+
+# initialize starting area
+
+for i in range(n_particles_A):
+    ps.set_positionbox(i, positionbox=positionbox_A)
+
+for i in range(n_particles_A,n_particles):
+    ps.set_positionbox(i, positionbox=positionbox_B)
 
 # set initial positions     
-initialize_positions(ps, sim.box_length)
+initialize_positions(ps)
 
 # set initial velocities     
 initialize_velocities(ps, sim.temperature)
@@ -310,8 +324,11 @@ size_map = {
 if particle_animation==True:
 
     # Create figure
-    fig = plt.figure(figsize=(7,7))
+    fig = plt.figure(figsize=(8,6))
     ax = fig.add_subplot(111, projection="3d")
+    fig.subplots_adjust(left=0.3)
+
+    fig.suptitle(f"Simulation of a particle mixture ",fontsize=18,fontweight="bold",y=1) #Here the title is changed
 
     # Extract coordinates for axis limits
     x = position_trajectory[:, :, 0]
@@ -322,9 +339,15 @@ if particle_animation==True:
     ax.set_ylim(0, y.max())
     ax.set_zlim(0, z.max())
 
-    ax.set_xlabel("x [nm]")
-    ax.set_ylabel("y [nm]")
-    ax.set_zlabel("z [nm]")
+    ax.set_xlabel("x [nm]", fontsize=16)
+    ax.set_ylabel("y [nm]", fontsize=16)
+    ax.set_zlabel("z [nm]", fontsize=16)
+
+    ax.tick_params(axis='both', which='major', labelsize=14)
+
+    ax.xaxis.set_major_locator(MultipleLocator(10))
+    ax.yaxis.set_major_locator(MultipleLocator(10))
+    ax.zaxis.set_major_locator(MultipleLocator(10))
 
     # Create one scatter object per particle type
     unique_types = np.unique(ps.type)
@@ -337,9 +360,45 @@ if particle_animation==True:
         size = size_map.get(i)
         scatters[i] = ax.scatter([],[],[],s=size,label=i, c=color)
 
+    ax.legend(
+        loc="upper left",
+        bbox_to_anchor=(-0.49, 1),   # move outside the axes
+        fontsize=16,                # particle labels size
+        title="Particle type:",
+        title_fontsize=16            # legend title size
+)
 
-    ax.legend(loc = "lower left", title="Particle types")
-    
+    parameter_text = (
+        f"{label_A} quantity:\n"
+        f"{n_particles_A} atoms\n\n"
+
+        f"{label_B} quantity:\n"
+        f"{n_particles_B} atoms\n\n"
+
+        f"Temperature:\n"
+        f"{temperature:.1f} K\n\n"
+
+        f"Box length:\n"
+        f"{box_length:.0f} nm\n\n"
+
+        f"Time step:\n"
+        f"{dt:.2f} ps"
+        
+        #f"Mixing completed at: {} ps" # for later
+        )
+
+    fig.text(
+        0.05, 0.05,           # x,y in figure coordinates
+        parameter_text,
+        fontsize=14,
+        linespacing=1.3,
+        va="bottom",
+        bbox=dict(
+            facecolor="white",
+            edgecolor="lightgrey",
+            boxstyle="round",
+            alpha=0.9))
+
 
     # Initialize first frame
     def init():
@@ -367,16 +426,18 @@ if particle_animation==True:
                 positions[mask, 1],
                 positions[mask, 2])
 
-        ax.set_title(f"Simulation of a particle mixture at time = {frame*dt:.1f} ps.")
+        # here the subtitle is changed -> can contain further info about simulation
+        ax.set_title(f"Mixture of equal parts {label_A} and {label_B} \n at time = {frame*dt:.1f} ps",fontsize=16,pad=-10)
         return list(scatters.values())
-
+    
+        
 
     #Create animation
     animation = FuncAnimation(fig,update,frames=range(position_trajectory.shape[0]),init_func=init,interval=30,blit=False)
     
     # Save animation
     #writer = FFMpegWriter(fps=30,bitrate=3000)
-    writer = PillowWriter(fps=60)
+    writer = PillowWriter(fps=200)
 
     animation.save(output_dir / (file_name_base + "_trajectory.gif"),
         writer=writer)
