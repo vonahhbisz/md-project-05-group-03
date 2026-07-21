@@ -27,7 +27,6 @@ class ParticleSystem:
         self.n = n_particles
         
         # defines the type of each particle by assigning it a lable 
-        """lass noch mal darüber reden"""
         self.type = np.array(["Xx"] * n_particles)
 
         # Properties for each particle
@@ -118,13 +117,16 @@ class SimulationParameters:
 
 def combining_rules(ps: ParticleSystem):
     """
-    Creates a matrix containing the sigma and epsilon parameters for all possible combinations of atomtypes /pairwise interactions following the Lorentz-Berthelot combining rules.
-    
-    shape: (Combinations of atoms, 2) 
+    Creates a matrix containing the sigma and epsilon parameters for all possible combinations of atomtypes /pairwise interactions following the Lorentz-Berthelot combining rules. 
     """
+    sigma_ij = 0.5 * (ps.sigma[:, np.newaxis] + ps.sigma[np.newaxis, :])
+    epsilon_ij = np.sqrt(ps.epsilon[:, np.newaxis] * ps.epsilon[np.newaxis, :])
+    # returns arrays with pairwise combined sigma (N,N) and epsilon (N,N) matrix
+    return sigma_ij, epsilon_ij
 
-        #for i in range(n_particles):
-    #for j in range(i + 1, n_particles):
+
+    #for i in range(n_particles):
+        #for j in range(i + 1, n_particles):
 
         #sigma_ij = 0.5 * (ps.sigma[i] + ps.sigma[j])
         #epsilon_ij = np.sqrt(ps.epsilon[i] * ps.epsilon[j])
@@ -133,12 +135,6 @@ def combining_rules(ps: ParticleSystem):
         #calculate_force(i, j, sigma_ij, epsilon_ij)
         # better alternative:
     # matrix includes interactions of particles with themselves, however these are excluded in the force calculation loop
-    sigma_ij = 0.5 * (ps.sigma[:, np.newaxis] + ps.sigma[np.newaxis, :])
-    epsilon_ij = np.sqrt(ps.epsilon[:, np.newaxis] * ps.epsilon[np.newaxis, :])
-# returns arrays with pairwise combined sigma (N,N) and epsilon (N,N) matrix
-    return sigma_ij, epsilon_ij
-
-
 
 #--------------------------------------
 # Initialization
@@ -198,9 +194,6 @@ def potential_energy(ps: ParticleSystem, sim: SimulationParameters) -> float:
     n_particles = ps.n
     L = sim.box_length
 
-    # pairwise combined LJ parameters (Lorentz-Berthelot combining rules)
-    sigma_ij, epsilon_ij = combining_rules(ps)
-
     # vectorized code to calculate the pairwise distances
     # positions[:, np.newaxis, :] has shape (N, 1, 3)
     # positions[np.newaxis, :, :] has shape (1, N, 3)
@@ -218,6 +211,9 @@ def potential_energy(ps: ParticleSystem, sim: SimulationParameters) -> float:
     
     # Get list of unique distance vectors and unique distances
     r = r_matrix[i_upper]                           # shape (N_pairs,)
+
+    # pairwise combined LJ parameters (Lorentz-Berthelot combining rules)
+    sigma_ij, epsilon_ij = combining_rules(ps)
 
     # Get combination of sigma and epsilon for each unique pair
     sigma = sigma_ij[i_upper]                # shape (N_pairs,)
@@ -555,6 +551,156 @@ def apply_periodic_boundary(ps: ParticleSystem, sim: SimulationParameters):
     # x >= L : x/L = 1*L + remainder => return remainder => shifts x by L to the left
     ps.position = np.mod(ps.position, L)
     
+
+
+#--------------------------------------
+# Mixing
+#--------------------------------------
+def mixing_fraction_frame(types: np.ndarray, positions: np.ndarray, box_length: float, k: int = 6) -> np.ndarray:
+    """
+    Determines fraction of nearest neighbors which belongs to a different typr
+    of atom for each particle for each frame
+
+    Periodic boundary conditions (minimum image convention) are applied
+    when computing distances, consistent with calculate_force().
+
+    Parameters:
+        -  types (np.ndarray): shape (N,), atom type label of each particle
+                             (e.g. ps.type).
+        - positions (np.ndarray): shape (N, 3), particle positions at this
+                                 frame (in nm).
+        -  box_length (float): length of the cubic simulation box (nm).
+        k (int): number of nearest neighbors to consider (default: 6).
+
+    Returns:
+        np.ndarray of shape (N,): for each particle, the fraction (between
+        0 and 1) of its k nearest neighbors that are of a different type.
+    """
+    n = positions.shape[0]
+    L = box_length
+
+    # pairwise displacement vectors (N, N, 3), periodic minimum image
+    rij = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]
+
+    # periodic boundary condition considered
+    rij -= L * np.rint(rij / L)
+
+    # pairwise distances (N, N)
+    r = np.linalg.norm(rij, axis=-1)
+
+    # makes sure particle itself isnt considered (distance would be 0)
+    # so rewrite diagonal to infintiy so isnt considered 
+    np.fill_diagonal(r, np.inf)
+
+    # indices of the k nearest neighbors for each particle (shape: N, k)
+    idx_neighbors = np.argpartition(r, kth=k - 1, axis=1)[:, :k]
+
+    # atom types of the k nearest neighbors of each particle (shape: N, k)
+    neighbor_types = types[idx_neighbors]
+
+    # is each neighbor a differnt type than the particle itself?
+    own_type = types[:, np.newaxis]                 # shape (N, 1)
+    is_foreign = neighbor_types != own_type          # shape (N, k), boolean
+
+    # fraction of foreign-type neighbors, per particle
+    foreign_fraction = np.mean(is_foreign, axis=1)   # shape (N,)
+
+    return foreign_fraction
+
+
+def mixing_degree_trajectory(types: np.ndarray, position_trajectory: np.ndarray, box_length: float, k: int = 6) -> np.ndarray:
+    """
+    Computes degree of mixing over time based on average neighbor fraction
+    averaged over all particles and returns a number between 0 and 1
+
+    Returns:
+        np.ndarray of shape (n_frames,): average mixing degree at each
+        recorded time step.
+    """
+    # averaging over only one type of particle would be simpler, but may lead to issues when
+    # observing a large amount of heavy particles and a small amount of light particles for example
+    # averaging over all particles ensures that the whole system is considered 
+    n_frames = position_trajectory.shape[0]
+    mixing_degree = np.zeros(n_frames)
+
+    for f in range(n_frames):
+        foreign_fraction = mixing_fraction_frame(types, position_trajectory[f], box_length, k=k)
+        mixing_degree[f] = np.mean(foreign_fraction)
+
+    return mixing_degree
+
+
+def fully_mixed_target(types: np.ndarray) -> float:
+    """
+    Determines target value (fraction of foreign atoms among all atoms in box)
+
+    Probability of neighbor being foreign is fraction of foreign atoms over
+    all atoms in box minus 1 (cant be itself)
+
+    with N = N_A + N_B
+
+        target = 2 * N_A * N_B / (N * (N - 1))
+
+    which generalizes to more than two species by summing N_i * N_j over
+    all unordered pairs of different types i != j.
+
+    Parameters:
+        types (np.ndarray): shape (N,), atom type of each particle.
+
+    Returns:
+        float: theoretical mixing degree of a fully, randomly mixed system.
+    """
+    unique_types, counts = np.unique(types, return_counts=True)
+    n = len(types)
+
+    # sum of N_i * N_j over all unordered pairs of DIFFERENT types
+    cross_pairs = 0
+    for i in range(len(unique_types)):
+        for j in range(i + 1, len(unique_types)):
+            cross_pairs += counts[i] * counts[j]
+
+    target = 2 * cross_pairs / (n * (n - 1))
+
+    return target
+
+
+def first_time_fully_mixed(mixing_degree: np.ndarray, target: float, dt: float,
+                            tolerance: float = 0.05, persistence: int = 20):
+    """
+    Finds first point where system exceeds threshold target value for mixing
+    and stays within tolerance for 20 frames
+
+    Parameters:
+        mixing_degree (np.ndarray): shape (n_frames,), mixing degree over
+                                     time (see mixing_degree_trajectory).
+        target (float): theoretical fully-mixed mixing degree (see
+                         fully_mixed_target).
+        dt (float): simulation time step (ps), used to convert the frame
+                    index into a physical time.
+        tolerance (float): relative tolerance band around target, e.g.
+                            0.05 = the value must reach at least 95% of
+                            the target (default: 0.05).
+        persistence (int): number of consecutive frames the trajectory
+                            must remain within tolerance of the target
+                            (default: 20).
+
+    Returns:
+        (frame_index, time_ps): the first qualifying frame index and the
+        corresponding simulation time in ps, as a tuple. Returns
+        (None, None) if the system never reaches a sustained, fully-mixed
+        state within the simulated time.
+    """
+    lower_bound = target * (1.0 - tolerance)
+    within_band = mixing_degree >= lower_bound
+
+    n_frames = len(mixing_degree)
+    for i in range(n_frames - persistence + 1):
+        if np.all(within_band[i:i + persistence]):
+            return i, i * dt
+
+    return None, None
+
+
 
 #--------------------------------------
 # Output

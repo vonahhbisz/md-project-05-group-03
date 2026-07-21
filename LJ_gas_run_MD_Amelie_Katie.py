@@ -43,8 +43,10 @@ from LJ_gas_Amelie_Katie import(
     potential_energy,
     kinetic_energy,
     instantaneous_temperature,
-    ideal_gas_pressure
-    )
+    ideal_gas_pressure,
+    mixing_degree_trajectory,
+    fully_mixed_target,
+    first_time_fully_mixed)
 
 #----------------------------------------------------------------
 #   F U N C T I O N S
@@ -80,7 +82,7 @@ sigma_A   = 0.25238          # sigma in nm                  Argon: 0.34     Heli
 epsilon_A = 82 * R * 1e-3    # epsilon in kJ/mol            Argon: 120      Helium 82
 label_A   = "He"
                         # start...  # end of line 
-positionbox_A = np.array([[0,0,0],[50,50,12.5]]) 
+positionbox_A = np.array([[0,0,0],[50,50,25]]) 
 # defines the area of starting positions as a box with x,y,z [nm]
 
 # second particle type
@@ -90,14 +92,14 @@ sigma_B   = 0.2789              # sigma in nm               Krypton: 0.364     X
 epsilon_B = 35.6 * R * 1e-3     # epsilon in kJ/mol         Krypton: 164       Xenon: 190     Neon: 35.6 
 label_B   = "Ne"
                         # start...  # end of line 
-positionbox_B = np.array([[0,0,12.5],[50,50,50]])
+positionbox_B = np.array([[0,0,25],[50,50,50]])
 # defines the area of starting positions as a box with x,y,z [nm]
 
 n_particles = n_particles_A + n_particles_B
 
 # simulation
-dt = 0.1             # ps
-n_steps = 1000 
+dt = 0.25            # ps
+n_steps = 999        # no more than 999
 temperature = 1000     # K
 box_length = 50     # nm
 tau_thermostat = 1  # thermostat coupling constant in 1/ps
@@ -109,7 +111,7 @@ NVT = True          # switch to decide between NVT and NVE
 #----------------------------------------------------------------
 
 # output
-file_name_base = "Positions_Test17"  # file name for all output files
+file_name_base = "layout5"  # file name for all output files
 
 # Create a folder inside your repository
 output_dir = Path("results") / file_name_base
@@ -128,6 +130,11 @@ plot_pressure = False
 
 particle_animation = True
 
+# plot mixing degree (based on nearest-neighbor composition)
+plot_mixing_degree = True
+
+# nearest neighbors to consider for the mixing degree (see below)
+k_neighbors = 10
 
 #----------------------------------------------------------------
 #   P R O G R A M
@@ -198,7 +205,7 @@ energy_trajectory[0,3] = ideal_gas_pressure(ps, sim)      # ideal gas pressure
 
 
 #--------------------------------------------------
-#  The acutal MD simulation
+#  The actual MD simulation
 #--------------------------------------------------
 for i in range(sim.n_steps):
     if NVT==True:
@@ -301,6 +308,53 @@ if plot_pressure==True:
     plt.show()
 
 
+#--------------------------------------------------
+#  Mixing degree
+#--------------------------------------------------
+# set time axis
+time_ps = np.arange(sim.n_steps + 1) * sim.dt
+# for each frame and each atom it is determind how many of its 
+# k=6 next neighbors belong to the other kind. the degree of mixing is
+# the average over all particles for a given frame
+mixing_degree = mixing_degree_trajectory(ps.type, position_trajectory, sim.box_length, k=k_neighbors)
+
+# target value (fully mixed), is dependant on number of particles of each type
+mixing_target = fully_mixed_target(ps.type)
+
+# first point in time when mixing degree reaches target value an stays there for 
+# 20 consecutive frames
+mixing_frame, mixing_time = first_time_fully_mixed(mixing_degree, mixing_target, sim.dt)
+
+if plot_mixing_degree == True:
+    plt.figure(figsize=(10, 6))
+    plt.plot(time_ps, mixing_degree, label="Mixing degree (simulation)")
+    plt.axhline(mixing_target, color="grey", linestyle="--",
+                label=f"Tageted value (mixture completed) = {mixing_target:.3f}")
+    if mixing_time is not None:
+        plt.axvline(mixing_time, color="red", linestyle=":",
+                    label=f"First complete mixture at t = {mixing_time:.1f} ps")
+    plt.ylim(0, 1)
+    plt.xlim(0,mixing_time + 20)
+    plt.xlabel("time [ps]", fontsize=14)
+    plt.ylabel("Mixing degree \n [percentage different neighbouring atoms]", fontsize=14)
+    plt.title("Mixing degree",fontsize=16)
+    plt.legend(fontsize=11)
+
+    plt.axhspan(mixing_target - 0.05,
+            mixing_target + 0.05,
+            color="tab:grey",
+            alpha=0.2)
+    
+    plt.savefig(output_dir / (file_name_base + "_mixing.png"), dpi=300, bbox_inches='tight')
+    plt.show()
+
+if mixing_time is not None:
+    print(f"Vollständige Vermischung erstmals erreicht bei t = {mixing_time:.2f} ps (Frame {mixing_frame})")
+else:
+    print("Innerhalb der simulierten Zeit wurde keine vollständige (dauerhafte) Vermischung erreicht.")
+
+
+
 #----------------------------------------------------
 # P A R T I C L E   A N I M A T I O N
 #----------------------------------------------------
@@ -324,11 +378,11 @@ size_map = {
 if particle_animation==True:
 
     # Create figure
-    fig = plt.figure(figsize=(8,6))
+    fig = plt.figure(figsize=(9,7))
     ax = fig.add_subplot(111, projection="3d")
     fig.subplots_adjust(left=0.3)
 
-    fig.suptitle(f"Simulation of a particle mixture ",fontsize=18,fontweight="bold",y=1) #Here the title is changed
+    fig.suptitle(f"Simulation of a particle mixture ",fontsize=24,fontweight="bold") #Here the title is changed
 
     # Extract coordinates for axis limits
     x = position_trajectory[:, :, 0]
@@ -339,11 +393,11 @@ if particle_animation==True:
     ax.set_ylim(0, y.max())
     ax.set_zlim(0, z.max())
 
-    ax.set_xlabel("x [nm]", fontsize=16)
-    ax.set_ylabel("y [nm]", fontsize=16)
-    ax.set_zlabel("z [nm]", fontsize=16)
+    ax.set_xlabel("x [nm]", fontsize=18)
+    ax.set_ylabel("y [nm]", fontsize=18)
+    ax.set_zlabel("z [nm]", fontsize=18)
 
-    ax.tick_params(axis='both', which='major', labelsize=14)
+    ax.tick_params(axis='both', which='major', labelsize=18)
 
     ax.xaxis.set_major_locator(MultipleLocator(10))
     ax.yaxis.set_major_locator(MultipleLocator(10))
@@ -363,9 +417,9 @@ if particle_animation==True:
     ax.legend(
         loc="upper left",
         bbox_to_anchor=(-0.49, 1),   # move outside the axes
-        fontsize=16,                # particle labels size
+        fontsize=18,                # particle labels size
         title="Particle type:",
-        title_fontsize=16            # legend title size
+        title_fontsize=18          # legend title size
 )
 
     parameter_text = (
@@ -382,15 +436,17 @@ if particle_animation==True:
         f"{box_length:.0f} nm\n\n"
 
         f"Time step:\n"
-        f"{dt:.2f} ps"
-        
-        #f"Mixing completed at: {} ps" # for later
+        f"{dt:.2f} ps\n\n"
+
+        + (f"Mixing completed at:\n{mixing_time:.1f} ps" if mixing_time is not None
+           else "Mixing completed at:\nnot reached")
         )
+
 
     fig.text(
         0.05, 0.05,           # x,y in figure coordinates
         parameter_text,
-        fontsize=14,
+        fontsize=16,
         linespacing=1.3,
         va="bottom",
         bbox=dict(
@@ -427,13 +483,13 @@ if particle_animation==True:
                 positions[mask, 2])
 
         # here the subtitle is changed -> can contain further info about simulation
-        ax.set_title(f"Mixture of equal parts {label_A} and {label_B} \n at time = {frame*dt:.1f} ps",fontsize=16,pad=-10)
+        ax.set_title(f"Mixture of equal parts {label_A} and {label_B} at time = {frame*dt:.1f} ps",fontsize=19)
         return list(scatters.values())
     
         
 
     #Create animation
-    animation = FuncAnimation(fig,update,frames=range(position_trajectory.shape[0]),init_func=init,interval=30,blit=False)
+    animation = FuncAnimation(fig,update,frames=(mixing_frame + 50),init_func=init,interval=30,blit=False)
     
     # Save animation
     #writer = FFMpegWriter(fps=30,bitrate=3000)
