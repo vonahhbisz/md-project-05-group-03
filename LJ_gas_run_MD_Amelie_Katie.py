@@ -321,7 +321,7 @@ mixing_degree = mixing_degree_trajectory(ps.type, position_trajectory, sim.box_l
 # target value (fully mixed), is dependant on number of particles of each type
 mixing_target = fully_mixed_target(ps.type)
 
-# first point in time when mixing degree reaches target value an stays there for 
+# first point in time when mixing degree reaches target value and stays there for 
 # 20 consecutive frames
 mixing_frame, mixing_time = first_time_fully_mixed(mixing_degree, mixing_target, sim.dt)
 
