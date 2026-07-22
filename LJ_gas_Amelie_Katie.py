@@ -212,6 +212,7 @@ def potential_energy(ps: ParticleSystem, sim: SimulationParameters) -> float:
     # Get list of unique distance vectors and unique distances
     r = r_matrix[i_upper]                           # shape (N_pairs,)
 
+
     # pairwise combined LJ parameters (Lorentz-Berthelot combining rules)
     sigma_ij, epsilon_ij = combining_rules(ps)
 

@@ -76,9 +76,9 @@ def toc():
 #----------------------------------------------------------------
 # system
 # first particle type
-n_particles_A = 175
-mass_A    = 4.003               # mass in u = 1e-3 kg/mol      Argon: 39.944    Helium: 4.003
-sigma_A   = 0.255               # sigma in nm                  Argon: 0.338     Helium 0.255
+n_particles_A = 100
+mass_A    = 4.003              # mass in u = 1e-3 kg/mol      Argon: 39.944    Helium: 4.003
+sigma_A   = 0.255              # sigma in nm                  Argon: 0.338     Helium 0.255
 epsilon_A = 10.22 * R * 1e-3    # epsilon in kJ/mol            Argon: 115.17      Helium 10.22
 label_A   = "He"
                         # start...  # end of line 
@@ -88,7 +88,7 @@ positionbox_A = np.array([[0,0,0],[50,50,25]])
 # second particle type
 n_particles_B = 25
 mass_B    = 20.138            # mass in u = 1e-3 kg/mol   Krypton: 83.800     Xenon: 131.3  Neon: 20.138
-sigma_B   = 0.279              # sigma in nm               Krypton: 0.362      Xenon: 0.405  Neon: 0.279
+sigma_B   = 0.279               # sigma in nm               Krypton: 0.362      Xenon: 0.405  Neon: 0.279
 epsilon_B = 33.89 * R * 1e-3     # epsilon in kJ/mol         Krypton: 159.85     Xenon: 231     Neon: 33.89
 label_B   = "Ne"
                         # start...  # end of line 
@@ -98,10 +98,10 @@ positionbox_B = np.array([[0,0,25],[50,50,50]])
 n_particles = n_particles_A + n_particles_B
 
 # simulation
-dt = 0.25            # ps
-n_steps = 999        # no more than 999
+dt = 0.25         # ps
+n_steps = 5     # no more than 999
 temperature = 1000     # K
-box_length = 50     # nm
+box_length = 50    # nm
 tau_thermostat = 1  # thermostat coupling constant in 1/ps
 rij_min = 1e-2      # nm
 NVT = True          # switch to decide between NVT and NVE
@@ -111,7 +111,7 @@ NVT = True          # switch to decide between NVT and NVE
 #----------------------------------------------------------------
 
 # output
-file_name_base = "ratio_B25_new"  # file name for all output files
+file_name_base = "no_BJ"  # file name for all output files
 
 # Create a folder inside your repository
 output_dir = Path("results") / file_name_base
@@ -127,11 +127,12 @@ plot_potential_enery = False
 plot_kinetic_enery = False
 plot_temperature = False
 plot_pressure = False
+combined_plot = False
 
 particle_animation = True
 
 # plot mixing degree (based on nearest-neighbor composition)
-plot_mixing_degree = True
+plot_mixing_degree = False
 
 # nearest neighbors to consider for the mixing degree (see below)
 k_neighbors = 10
@@ -334,7 +335,7 @@ if plot_mixing_degree == True:
         plt.axvline(mixing_time, color="red", linestyle=":",
                     label=f"First complete mixture at t = {mixing_time:.1f} ps")
     plt.ylim(0, 1)
-    plt.xlim(0,mixing_time + 20)
+    plt.xlim(0,(mixing_time+20))
     plt.xlabel("time [ps]", fontsize=14)
     plt.ylabel("Mixing degree \n [percentage different neighbouring atoms]", fontsize=14)
     plt.title("Mixing degree",fontsize=16)
@@ -498,7 +499,7 @@ if particle_animation==True:
         
 
     #Create animation
-    animation = FuncAnimation(fig,update,frames=(mixing_frame + 50),init_func=init,interval=30,blit=False)
+    animation = FuncAnimation(fig,update,frames=(n_steps),init_func=init,interval=30,blit=False)
     
     # Save animation
     #writer = FFMpegWriter(fps=30,bitrate=3000)
@@ -509,6 +510,69 @@ if particle_animation==True:
     
     plt.show()
     plt.close()
+
+#--------------------------------------
+# C O M B I N E D   P L O T 
+#--------------------------------------
+
+if combined_plot==True:
+
+    files = [
+        "pos_half_mixing_data.npz",
+        "pos_quarter_mixing_data.npz",
+        "pos_gap_mixing_data.npz",
+        "pos_inside_mixing_data.npz",
+    ]
+
+    labels = [
+        "half & half",
+        "1/4 & 3/4",
+        "empty middle",
+        "center start",
+    ]
+
+    colors = ["tab:blue", "tab:orange", "tab:purple", "tab:red"]
+
+    plt.figure(figsize=(10, 6))
+
+    target = None
+
+    for file, label, colors in zip(files, labels,colors):
+        data = np.load(file)
+
+        time_ps = data["time_ps"]
+        mixing_degree = data["mixing_degree"]
+        mixing_target = float(data["mixing_target"])
+        mixing_time = data["mixing_time"]
+        mixing_frame = int(data["mixing_frame"])
+
+        plt.plot(time_ps, mixing_degree, label=f"Mixing degree ({label})", color=colors)
+
+        # Draw the target only once
+        if target is None:
+            target = mixing_target
+            plt.axhline(target, color="grey", linestyle="--",
+                        label=f"Targeted value (mixture complete) = {target:.3f}")
+            plt.axhspan(target - 0.05, target + 0.05,
+                        color="tab:grey", alpha=0.2)
+
+        # Draw vertical line if mixing was reached
+        if not np.isnan(mixing_time):
+            plt.axvline(mixing_time, linestyle=":", alpha=0.6, color=colors, label=f"First complete mixture at t = {data['mixing_time']:.1f} ps ({label})")
+
+    plt.xlabel("Time [ps]", fontsize=14)
+    plt.ylabel("Mixing degree\n[fraction of different neighbouring atoms]", fontsize=14)
+    plt.title("Mixing degree for different starting positions", fontsize=16)
+    plt.ylim(0, 1)
+    plt.xlim(0,230)
+    plt.legend(fontsize=11)
+
+    plt.tight_layout()
+    plt.show
+    plt.savefig(output_dir / (file_name_base + "_combined.png"), dpi=300, bbox_inches='tight')
+
+
+
 
 #--------------------------------------
 # O U T P U T 
