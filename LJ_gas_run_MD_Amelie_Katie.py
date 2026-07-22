@@ -76,20 +76,20 @@ def toc():
 #----------------------------------------------------------------
 # system
 # first particle type
-n_particles_A = 25
-mass_A    = 4.0              # mass in u = 1e-3 kg/mol      Argon: 39.95    Helium: 4.0
-sigma_A   = 0.25238          # sigma in nm                  Argon: 0.34     Helium 0.25238 
-epsilon_A = 82 * R * 1e-3    # epsilon in kJ/mol            Argon: 120      Helium 82
+n_particles_A = 100
+mass_A    = 4.003               # mass in u = 1e-3 kg/mol      Argon: 39.944    Helium: 4.003
+sigma_A   = 0.255               # sigma in nm                  Argon: 0.338     Helium 0.255
+epsilon_A = 10.22 * R * 1e-3    # epsilon in kJ/mol            Argon: 115.17      Helium 10.22
 label_A   = "He"
                         # start...  # end of line 
 positionbox_A = np.array([[0,0,0],[50,50,25]]) 
 # defines the area of starting positions as a box with x,y,z [nm]
 
 # second particle type
-n_particles_B = 175
-mass_B    = 20.1797             # mass in u = 1e-3 kg/mol   Krypton: 83.80     Xenon: 131.29  Neon: 20.1797
-sigma_B   = 0.2789              # sigma in nm               Krypton: 0.364     Xenon: 0.4063  Neon: 0.2789
-epsilon_B = 35.6 * R * 1e-3     # epsilon in kJ/mol         Krypton: 164       Xenon: 190     Neon: 35.6 
+n_particles_B = 100
+mass_B    = 20.138            # mass in u = 1e-3 kg/mol   Krypton: 83.800     Xenon: 131.3  Neon: 20.138
+sigma_B   = 0.279              # sigma in nm               Krypton: 0.362      Xenon: 0.405  Neon: 0.279
+epsilon_B = 33.89 * R * 1e-3     # epsilon in kJ/mol         Krypton: 159.85     Xenon: 231     Neon: 33.89
 label_B   = "Ne"
                         # start...  # end of line 
 positionbox_B = np.array([[0,0,25],[50,50,50]])
