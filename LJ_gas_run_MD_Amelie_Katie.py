@@ -100,7 +100,7 @@ n_particles = n_particles_A + n_particles_B
 # simulation
 dt = 0.25            # ps
 n_steps = 999        # no more than 999
-temperature = 1000     # K
+temperature = 350     # K
 box_length = 50     # nm
 tau_thermostat = 1  # thermostat coupling constant in 1/ps
 rij_min = 1e-2      # nm
@@ -111,7 +111,7 @@ NVT = True          # switch to decide between NVT and NVE
 #----------------------------------------------------------------
 
 # output
-file_name_base = "layout5"  # file name for all output files
+file_name_base = "temp_350"  # file name for all output files
 
 # Create a folder inside your repository
 output_dir = Path("results") / file_name_base
@@ -348,10 +348,19 @@ if plot_mixing_degree == True:
     plt.savefig(output_dir / (file_name_base + "_mixing.png"), dpi=300, bbox_inches='tight')
     plt.show()
 
+    np.savez(
+        output_dir / (file_name_base + "_mixing_data.npz"),
+        time_ps=time_ps,
+        mixing_degree=mixing_degree,
+        mixing_target=mixing_target,
+        mixing_time=mixing_time if mixing_time is not None else np.nan,
+        mixing_frame=mixing_frame if mixing_frame is not None else -1,
+    )
+
 if mixing_time is not None:
     print(f"Vollständige Vermischung erstmals erreicht bei t = {mixing_time:.2f} ps (Frame {mixing_frame})")
 else:
-    print("Innerhalb der simulierten Zeit wurde keine vollständige (dauerhafte) Vermischung erreicht.")
+    print("Innerhalb der simulierten Zeit wurde keine vollständige Vermischung erreicht.")
 
 
 
