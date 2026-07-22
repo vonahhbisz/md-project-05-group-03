@@ -5,7 +5,7 @@ Simulation parameters
 Number of particles:                 200 
 Box length:                    5.000e+01 nm
 Box volume:                    1.250e+05 nm^3
-Density:                       3.212e-05 g/cm^3
+Density:                       4.824e-05 g/cm^3
 
 Time step:                         0.250 ps
 Number of time steps:                999
@@ -17,9 +17,9 @@ Thermostat coupling:           1.000e+00 ps
 
 Lower cutoff radius:               0.010 nm
 ----------------------------------------------------------
-Elapsed time:                    265.890 s
-Elapsed time per time step:        0.266 s
-Time stamp:                   2026-07-21 12:26:56 s
+Elapsed time:                    155.826 s
+Elapsed time per time step:        0.156 s
+Time stamp:                   2026-07-21 17:15:42 s
 ----------------------------------------------------------
 END
 ----------------------------------------------------------

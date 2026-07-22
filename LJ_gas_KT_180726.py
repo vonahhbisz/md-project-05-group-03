@@ -656,7 +656,7 @@ def fully_mixed_target(types: np.ndarray) -> float:
     unique_types, counts = np.unique(types, return_counts=True)
     n = len(types)
 
-    # sum of N_i * N_j over all unordered pairs of DIFFERENT types
+    # sum of N_i * N_j over all unordered pairs of different types
     cross_pairs = 0
     for i in range(len(unique_types)):
         for j in range(i + 1, len(unique_types)):
