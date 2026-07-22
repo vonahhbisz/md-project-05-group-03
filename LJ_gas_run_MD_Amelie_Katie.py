@@ -76,7 +76,7 @@ def toc():
 #----------------------------------------------------------------
 # system
 # first particle type
-n_particles_A = 100
+n_particles_A = 175
 mass_A    = 4.003               # mass in u = 1e-3 kg/mol      Argon: 39.944    Helium: 4.003
 sigma_A   = 0.255               # sigma in nm                  Argon: 0.338     Helium 0.255
 epsilon_A = 10.22 * R * 1e-3    # epsilon in kJ/mol            Argon: 115.17      Helium 10.22
@@ -86,7 +86,7 @@ positionbox_A = np.array([[0,0,0],[50,50,25]])
 # defines the area of starting positions as a box with x,y,z [nm]
 
 # second particle type
-n_particles_B = 100
+n_particles_B = 25
 mass_B    = 20.138            # mass in u = 1e-3 kg/mol   Krypton: 83.800     Xenon: 131.3  Neon: 20.138
 sigma_B   = 0.279              # sigma in nm               Krypton: 0.362      Xenon: 0.405  Neon: 0.279
 epsilon_B = 33.89 * R * 1e-3     # epsilon in kJ/mol         Krypton: 159.85     Xenon: 231     Neon: 33.89
@@ -100,7 +100,7 @@ n_particles = n_particles_A + n_particles_B
 # simulation
 dt = 0.25            # ps
 n_steps = 999        # no more than 999
-temperature = 350     # K
+temperature = 1000     # K
 box_length = 50     # nm
 tau_thermostat = 1  # thermostat coupling constant in 1/ps
 rij_min = 1e-2      # nm
@@ -111,7 +111,7 @@ NVT = True          # switch to decide between NVT and NVE
 #----------------------------------------------------------------
 
 # output
-file_name_base = "temp_350"  # file name for all output files
+file_name_base = "ratio_B25_new"  # file name for all output files
 
 # Create a folder inside your repository
 output_dir = Path("results") / file_name_base
@@ -492,7 +492,7 @@ if particle_animation==True:
                 positions[mask, 2])
 
         # here the subtitle is changed -> can contain further info about simulation
-        ax.set_title(f"Mixture of equal parts {label_A} and {label_B} at time = {frame*dt:.1f} ps",fontsize=19)
+        ax.set_title(f"Mixture of 25 {label_A} and 175 {label_B} at time = {frame*dt:.1f} ps",fontsize=19)
         return list(scatters.values())
     
         
